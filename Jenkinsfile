@@ -6,17 +6,11 @@ pipeline {
     }
     
     environment {
-        
         NEXUS_VERSION = "nexus3"
         NEXUS_PROTOCOL = "http"
-        NEXUS_URL = "host.docker.internal:8081"
+        NEXUS_URL = "nexus:8081"
         NEXUS_REPOSITORY = "maven-releases"
         NEXUS_CREDENTIAL_ID = "nexus-credentials"
-        
-        
-        ARTIFACT_GROUP = "com.example"
-        ARTIFACT_ID = "springboot-hello"
-        ARTIFACT_VERSION = "1.0.0"
     }
     
     stages {
@@ -70,23 +64,31 @@ pipeline {
             steps {
                 echo '=== Publishing Artifact to Nexus ==='
                 script {
-                    
-                    def pom = readMavenPom file: 'pom.xml'
-                    
-                    
-                    def jarFile = findFiles(glob: "target/*.jar")[0]
-                    
-                    echo "Artifact: ${jarFile.name}"
-                    echo "Group: ${pom.groupId}"
-                    echo "Artifact ID: ${pom.artifactId}"
-                    echo "Version: ${pom.version}"
-                    
-                    
                     configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
                         if (isUnix()) {
-                            sh "mvn deploy -s $MAVEN_SETTINGS -DskipTests"
+                            sh """
+                                mvn deploy:deploy-file \
+                                -s \$MAVEN_SETTINGS \
+                                -DgroupId=com.example \
+                                -DartifactId=springboot-hello \
+                                -Dversion=1.0.0 \
+                                -Dpackaging=jar \
+                                -Dfile=target/springboot-hello-1.0.0.jar \
+                                -DrepositoryId=nexus-releases \
+                                -Durl=http://nexus:8081/repository/maven-releases/
+                            """
                         } else {
-                            bat "mvn deploy -s %MAVEN_SETTINGS% -DskipTests"
+                            bat """
+                                mvn deploy:deploy-file ^
+                                -s %MAVEN_SETTINGS% ^
+                                -DgroupId=com.example ^
+                                -DartifactId=springboot-hello ^
+                                -Dversion=1.0.0 ^
+                                -Dpackaging=jar ^
+                                -Dfile=target/springboot-hello-1.0.0.jar ^
+                                -DrepositoryId=nexus-releases ^
+                                -Durl=http://nexus:8081/repository/maven-releases/
+                            """
                         }
                     }
                 }
